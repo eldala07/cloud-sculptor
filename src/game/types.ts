@@ -38,6 +38,7 @@ export type EyeStyle = 'sleepy' | 'happy' | 'surprised' | 'tiny' | 'big';
 export type MouthStyle = 'smile' | 'o' | 'sleepy' | 'grin';
 export type Accessory = 'antennae' | 'bow' | 'crown' | 'halo' | 'horns' | 'none';
 export type BodyExtra = 'wings' | 'legs' | 'many-legs' | 'tail' | 'raindrops' | 'sparkles';
+export type GenerationSource = 'ai' | 'procedural';
 
 export interface CreatureFeatures {
   eyes: EyeStyle;
@@ -60,4 +61,5 @@ export interface Creature {
 
 export interface SavedCreature extends Creature {
   savedAt: string;
+  generationSource?: GenerationSource;
 }

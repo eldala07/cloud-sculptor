@@ -7,6 +7,7 @@ import type {
   EyeStyle,
   MouthStyle,
   Point,
+  GenerationSource,
 } from './types';
 
 interface AiCreatureSuggestion {
@@ -22,7 +23,8 @@ interface AiCreatureSuggestion {
 
 export interface CreatureGenerationResult {
   creature: Creature;
-  source: 'ai' | 'procedural';
+  source: GenerationSource;
+  note?: string;
 }
 
 const eyeStyles: EyeStyle[] = ['sleepy', 'happy', 'surprised', 'tiny', 'big'];
@@ -107,13 +109,22 @@ export async function createCreatureWithAi(points: Point[]): Promise<CreatureGen
     });
 
     if (!response.ok) {
-      return { creature: baseCreature, source: 'procedural' };
+      const errorText = await readError(response);
+      return {
+        creature: baseCreature,
+        source: 'procedural',
+        note: errorText || 'AI generation was unavailable, so local generation was used.',
+      };
     }
 
     const suggestion = normalizeSuggestion(await response.json());
 
     if (!suggestion) {
-      return { creature: baseCreature, source: 'procedural' };
+      return {
+        creature: baseCreature,
+        source: 'procedural',
+        note: 'AI returned an unexpected shape, so local generation was used.',
+      };
     }
 
     return {
@@ -134,6 +145,24 @@ export async function createCreatureWithAi(points: Point[]): Promise<CreatureGen
       },
     };
   } catch {
-    return { creature: baseCreature, source: 'procedural' };
+    return {
+      creature: baseCreature,
+      source: 'procedural',
+      note: 'The AI endpoint could not be reached, so local generation was used.',
+    };
   }
+}
+
+async function readError(response: Response) {
+  try {
+    const body = (await response.json()) as { error?: unknown };
+
+    if (typeof body.error === 'string') {
+      return body.error;
+    }
+  } catch {
+    return '';
+  }
+
+  return '';
 }

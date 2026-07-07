@@ -34,6 +34,7 @@ export default function App() {
   const [isDrawing, setIsDrawing] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationSource, setGenerationSource] = useState<CreatureGenerationResult['source'] | null>(null);
+  const [generationNote, setGenerationNote] = useState('');
   const [creature, setCreature] = useState<Creature | null>(null);
   const [creatureName, setCreatureName] = useState('');
   const [savedCreatures, setSavedCreatures] = useState<SavedCreature[]>(() => loadSavedCreatures());
@@ -52,7 +53,7 @@ export default function App() {
     if (creature) {
       return generationSource === 'ai'
         ? `${creature.name} is gently floating with AI-sparked traits.`
-        : `${creature.name} is gently floating from local cloud magic.`;
+        : generationNote || `${creature.name} is gently floating from local cloud magic.`;
     }
 
     if (points.length > 0) {
@@ -60,7 +61,7 @@ export default function App() {
     }
 
     return 'Draw a fluffy cloud anywhere in the sky.';
-  }, [creature, generationSource, isGenerating, points.length]);
+  }, [creature, generationNote, generationSource, isGenerating, points.length]);
 
   function getPoint(clientX: number, clientY: number): Point | null {
     const stage = stageRef.current;
@@ -106,6 +107,7 @@ export default function App() {
       setCreature(null);
       setCreatureName('');
       setGenerationSource(null);
+      setGenerationNote('');
       setPoints([point]);
     } else {
       addPoint(point);
@@ -145,6 +147,7 @@ export default function App() {
     setCreature(result.creature);
     setCreatureName(result.creature.name);
     setGenerationSource(result.source);
+    setGenerationNote(result.note ?? '');
     setIsGenerating(false);
   }
 
@@ -153,6 +156,7 @@ export default function App() {
     setCreature(null);
     setCreatureName('');
     setGenerationSource(null);
+    setGenerationNote('');
     setIsDrawing(false);
     setIsGenerating(false);
   }
@@ -166,10 +170,21 @@ export default function App() {
       ...creature,
       id: `${creature.id}-saved-${Date.now().toString(36)}`,
       name: creatureName.trim(),
+      generationSource: generationSource ?? 'procedural',
       savedAt: new Date().toISOString(),
     };
 
     setSavedCreatures((currentCreatures) => [savedCreature, ...currentCreatures].slice(0, 12));
+  }
+
+  function loadSavedCreature(savedCreature: SavedCreature) {
+    setCreature(savedCreature);
+    setCreatureName(savedCreature.name);
+    setPoints(savedCreature.shape.points);
+    setGenerationSource(savedCreature.generationSource ?? null);
+    setGenerationNote('');
+    setIsDrawing(false);
+    setIsGenerating(false);
   }
 
   function deleteCreature(id: string) {
@@ -223,7 +238,7 @@ export default function App() {
               onSave={saveCreature}
               canSave={canSave}
             />
-            <Gallery creatures={savedCreatures} onDelete={deleteCreature} />
+            <Gallery creatures={savedCreatures} onSelect={loadSavedCreature} onDelete={deleteCreature} />
           </aside>
         </section>
       </main>

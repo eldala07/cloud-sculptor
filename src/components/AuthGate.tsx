@@ -4,7 +4,7 @@ interface AuthGateProps {
   children: React.ReactNode;
 }
 
-type AuthState = 'checking' | 'authenticated' | 'locked' | 'misconfigured' | 'local';
+type AuthState = 'checking' | 'authenticated' | 'locked' | 'misconfigured' | 'unavailable';
 
 export function AuthGate({ children }: AuthGateProps) {
   const [authState, setAuthState] = useState<AuthState>('checking');
@@ -41,7 +41,7 @@ export function AuthGate({ children }: AuthGateProps) {
         }
       } catch {
         if (isMounted) {
-          setAuthState('local');
+          setAuthState('unavailable');
         }
       }
     }
@@ -81,7 +81,7 @@ export function AuthGate({ children }: AuthGateProps) {
     }
   }
 
-  if (authState === 'authenticated' || authState === 'local') {
+  if (authState === 'authenticated') {
     return <>{children}</>;
   }
 
@@ -103,6 +103,18 @@ export function AuthGate({ children }: AuthGateProps) {
           <p className="app-label">Cloud Sculptor</p>
           <h1>Passcode required</h1>
           <p>Set `APP_PASSCODE` on the server before publishing this app with AI enabled.</p>
+        </section>
+      </main>
+    );
+  }
+
+  if (authState === 'unavailable') {
+    return (
+      <main className="auth-shell">
+        <section className="auth-panel">
+          <p className="app-label">Cloud Sculptor</p>
+          <h1>Auth service unavailable</h1>
+          <p>The app needs the `/api/auth` serverless route for passcode access and AI generation.</p>
         </section>
       </main>
     );

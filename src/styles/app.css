@@ -530,7 +530,7 @@ input[type='range'] {
 
 .saved-creature {
   display: grid;
-  grid-template-columns: 74px minmax(0, 1fr) 34px;
+  grid-template-columns: 74px minmax(0, 1fr) 68px;
   align-items: center;
   gap: 10px;
   min-height: 82px;
@@ -547,6 +547,20 @@ input[type='range'] {
   line-height: 1.35;
 }
 
+.saved-actions {
+  display: grid;
+  gap: 6px;
+}
+
+.mini-button {
+  width: 100%;
+  min-height: 30px;
+  color: #24445b;
+  font-size: 0.78rem;
+  background: rgba(216, 245, 233, 0.86);
+  box-shadow: inset 0 0 0 1px rgba(80, 117, 145, 0.12);
+}
+
 .creature-thumb {
   width: 74px;
   height: 64px;
@@ -560,10 +574,11 @@ input[type='range'] {
 
 .icon-button {
   display: grid;
-  width: 34px;
-  min-height: 34px;
+  width: 100%;
+  min-height: 30px;
   place-items: center;
   color: #5a6b78;
+  font-size: 0.78rem;
   background: rgba(255, 255, 255, 0.72);
   box-shadow: inset 0 0 0 1px rgba(80, 117, 145, 0.14);
 }
@@ -638,7 +653,12 @@ input[type='range'] {
   }
 
   .saved-creature {
-    grid-template-columns: 64px minmax(0, 1fr) 34px;
+    grid-template-columns: 64px minmax(0, 1fr);
+  }
+
+  .saved-actions {
+    grid-column: 1 / -1;
+    grid-template-columns: 1fr 1fr;
   }
 
   .creature-thumb {

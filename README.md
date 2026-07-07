@@ -13,6 +13,12 @@ npm run dev
 
 Open the local URL printed by Vite.
 
+`npm run dev` starts the Vite frontend only. Passcode auth and AI generation require the serverless `api/` routes, so run the app with your deployment platform's local server when testing those features. For Vercel:
+
+```bash
+npx vercel dev
+```
+
 ## OpenAI setup
 
 Do not put `OPENAI_API_KEY` in frontend code. The included `api/generate-creature.ts` route is server-side and expects the key as an environment variable.
@@ -31,7 +37,7 @@ OPENAI_MODEL=gpt-5.5
 APP_PASSCODE=your_shared_passcode
 ```
 
-The plain Vite dev server will still run the app, but it will use the local procedural fallback unless your host/dev environment also serves the `/api/generate-creature` serverless route. On Vercel, add `OPENAI_API_KEY` in the project environment variables before deploying.
+The plain Vite dev server does not serve the `/api/*` routes. On Vercel, add `OPENAI_API_KEY` in the project environment variables before deploying.
 
 ## App access
 

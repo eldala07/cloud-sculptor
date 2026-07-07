@@ -1,8 +1,8 @@
-import type { Creature } from '../game/types';
+import type { Creature, GenerationSource } from '../game/types';
 
 interface CreatureCardProps {
   creature: Creature | null;
-  generationSource: 'ai' | 'procedural' | null;
+  generationSource: GenerationSource | null;
   name: string;
   onNameChange: (name: string) => void;
   onSave: () => void;

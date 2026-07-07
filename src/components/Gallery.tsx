@@ -3,10 +3,11 @@ import type { SavedCreature } from '../game/types';
 
 interface GalleryProps {
   creatures: SavedCreature[];
+  onSelect: (creature: SavedCreature) => void;
   onDelete: (id: string) => void;
 }
 
-export function Gallery({ creatures, onDelete }: GalleryProps) {
+export function Gallery({ creatures, onSelect, onDelete }: GalleryProps) {
   return (
     <section className="panel-section gallery-section">
       <div className="section-heading">
@@ -27,9 +28,14 @@ export function Gallery({ creatures, onDelete }: GalleryProps) {
                 <h3>{creature.name}</h3>
                 <p>{creature.mood} · {creature.size}</p>
               </div>
-              <button type="button" className="icon-button" onClick={() => onDelete(creature.id)} aria-label={`Delete ${creature.name}`}>
-                x
-              </button>
+              <div className="saved-actions">
+                <button type="button" className="mini-button" onClick={() => onSelect(creature)}>
+                  Load
+                </button>
+                <button type="button" className="icon-button" onClick={() => onDelete(creature.id)} aria-label={`Delete ${creature.name}`}>
+                  Delete
+                </button>
+              </div>
             </article>
           ))}
         </div>
