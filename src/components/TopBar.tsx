@@ -1,10 +1,11 @@
 interface TopBarProps {
   canBringToLife: boolean;
+  isGenerating: boolean;
   onBringToLife: () => void;
   onClear: () => void;
 }
 
-export function TopBar({ canBringToLife, onBringToLife, onClear }: TopBarProps) {
+export function TopBar({ canBringToLife, isGenerating, onBringToLife, onClear }: TopBarProps) {
   return (
     <header className="top-bar">
       <div>
@@ -15,8 +16,8 @@ export function TopBar({ canBringToLife, onBringToLife, onClear }: TopBarProps) 
         <button type="button" className="secondary-action" onClick={onClear}>
           Clear
         </button>
-        <button type="button" className="primary-action" onClick={onBringToLife} disabled={!canBringToLife}>
-          Bring to Life
+        <button type="button" className="primary-action" onClick={onBringToLife} disabled={!canBringToLife || isGenerating}>
+          {isGenerating ? 'Summoning...' : 'Bring to Life'}
         </button>
       </div>
     </header>

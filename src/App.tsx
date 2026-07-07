@@ -4,7 +4,7 @@ import { CloudCreature } from './components/CloudCreature';
 import { CreatureCard } from './components/CreatureCard';
 import { Gallery } from './components/Gallery';
 import { TopBar } from './components/TopBar';
-import { createCreatureFromPoints } from './game/generator';
+import { createCreatureWithAi, type CreatureGenerationResult } from './game/ai';
 import type { Creature, Point, SavedCreature } from './game/types';
 import './styles/app.css';
 
@@ -31,6 +31,8 @@ export default function App() {
   const [points, setPoints] = useState<Point[]>([]);
   const [brushSize, setBrushSize] = useState(34);
   const [isDrawing, setIsDrawing] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generationSource, setGenerationSource] = useState<CreatureGenerationResult['source'] | null>(null);
   const [creature, setCreature] = useState<Creature | null>(null);
   const [creatureName, setCreatureName] = useState('');
   const [savedCreatures, setSavedCreatures] = useState<SavedCreature[]>(() => loadSavedCreatures());
@@ -42,8 +44,14 @@ export default function App() {
   const canBringToLife = points.length >= minimumCloudPoints;
   const canSave = Boolean(creature && creatureName.trim());
   const statusText = useMemo(() => {
+    if (isGenerating) {
+      return 'Asking the sky for a little extra magic...';
+    }
+
     if (creature) {
-      return `${creature.name} is gently floating.`;
+      return generationSource === 'ai'
+        ? `${creature.name} is gently floating with AI-sparked traits.`
+        : `${creature.name} is gently floating from local cloud magic.`;
     }
 
     if (points.length > 0) {
@@ -51,7 +59,7 @@ export default function App() {
     }
 
     return 'Draw a fluffy cloud anywhere in the sky.';
-  }, [creature, points.length]);
+  }, [creature, generationSource, isGenerating, points.length]);
 
   function getPoint(clientX: number, clientY: number): Point | null {
     const stage = stageRef.current;
@@ -96,6 +104,7 @@ export default function App() {
     if (creature) {
       setCreature(null);
       setCreatureName('');
+      setGenerationSource(null);
       setPoints([point]);
     } else {
       addPoint(point);
@@ -124,21 +133,27 @@ export default function App() {
     setIsDrawing(false);
   }
 
-  function bringToLife() {
-    if (!canBringToLife) {
+  async function bringToLife() {
+    if (!canBringToLife || isGenerating) {
       return;
     }
 
-    const nextCreature = createCreatureFromPoints(points);
-    setCreature(nextCreature);
-    setCreatureName(nextCreature.name);
+    setIsGenerating(true);
+
+    const result = await createCreatureWithAi(points);
+    setCreature(result.creature);
+    setCreatureName(result.creature.name);
+    setGenerationSource(result.source);
+    setIsGenerating(false);
   }
 
   function clearCanvas() {
     setPoints([]);
     setCreature(null);
     setCreatureName('');
+    setGenerationSource(null);
     setIsDrawing(false);
+    setIsGenerating(false);
   }
 
   function saveCreature() {
@@ -164,7 +179,12 @@ export default function App() {
     <main className="app-shell" aria-label="Cloud Sculptor app">
       <div className="sky-decoration cloud-one" />
       <div className="sky-decoration cloud-two" />
-      <TopBar canBringToLife={canBringToLife} onBringToLife={bringToLife} onClear={clearCanvas} />
+      <TopBar
+        canBringToLife={canBringToLife}
+        isGenerating={isGenerating}
+        onBringToLife={bringToLife}
+        onClear={clearCanvas}
+      />
       <section className="workspace">
         <div className="sky-stage" ref={stageRef}>
           <svg
@@ -189,6 +209,7 @@ export default function App() {
           <BrushControls brushSize={brushSize} onBrushSizeChange={setBrushSize} />
           <CreatureCard
             creature={creature}
+            generationSource={generationSource}
             name={creatureName}
             onNameChange={setCreatureName}
             onSave={saveCreature}

@@ -2,13 +2,14 @@ import type { Creature } from '../game/types';
 
 interface CreatureCardProps {
   creature: Creature | null;
+  generationSource: 'ai' | 'procedural' | null;
   name: string;
   onNameChange: (name: string) => void;
   onSave: () => void;
   canSave: boolean;
 }
 
-export function CreatureCard({ creature, name, onNameChange, onSave, canSave }: CreatureCardProps) {
+export function CreatureCard({ creature, generationSource, name, onNameChange, onSave, canSave }: CreatureCardProps) {
   if (!creature) {
     return (
       <section className="panel-section creature-card empty-state">
@@ -29,6 +30,7 @@ export function CreatureCard({ creature, name, onNameChange, onSave, canSave }: 
       <div className="creature-facts">
         <span>{creature.mood}</span>
         <span>{creature.size}</span>
+        <span>{generationSource === 'ai' ? 'AI sparked' : 'Local magic'}</span>
       </div>
       <div className="trait-list" aria-label="Creature traits">
         {creature.traits.map((trait) => (
