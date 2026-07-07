@@ -1,4 +1,4 @@
-import { isAuthConfigured, isAuthenticated, setCorsHeaders, type ApiRequest, type ApiResponse } from './_auth';
+import { isAuthConfigured, isAuthenticated, setCorsHeaders, type ApiRequest, type ApiResponse } from './_auth.js';
 
 interface CloudMetrics {
   width: number;
@@ -128,86 +128,123 @@ function extractOutputText(responseBody: unknown) {
   return '';
 }
 
+async function readJsonResponse(response: Response) {
+  const bodyText = await response.text();
+
+  if (!bodyText) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(bodyText) as unknown;
+  } catch {
+    return null;
+  }
+}
+
+function readOpenAiError(responseBody: unknown) {
+  if (!responseBody || typeof responseBody !== 'object' || !('error' in responseBody)) {
+    return 'OpenAI request failed';
+  }
+
+  const error = (responseBody as { error?: unknown }).error;
+
+  if (error && typeof error === 'object' && 'message' in error) {
+    const message = (error as { message?: unknown }).message;
+    return typeof message === 'string' ? message : 'OpenAI request failed';
+  }
+
+  return typeof error === 'string' ? error : 'OpenAI request failed';
+}
+
 export default async function handler(request: ApiRequest, response: ApiResponse) {
-  setCorsHeaders(response);
+  try {
+    setCorsHeaders(response);
 
-  if (request.method === 'OPTIONS') {
-    response.status(204).json({});
-    return;
-  }
+    if (request.method === 'OPTIONS') {
+      response.status(204).json({});
+      return;
+    }
 
-  if (request.method !== 'POST') {
-    response.status(405).json({ error: 'Method not allowed' });
-    return;
-  }
+    if (request.method !== 'POST') {
+      response.status(405).json({ error: 'Method not allowed' });
+      return;
+    }
 
-  if (!isAuthConfigured()) {
-    response.status(503).json({ error: 'App passcode is not configured' });
-    return;
-  }
+    if (!isAuthConfigured()) {
+      response.status(503).json({ error: 'App passcode is not configured' });
+      return;
+    }
 
-  if (!isAuthenticated(request)) {
-    response.status(401).json({ error: 'Authentication required' });
-    return;
-  }
+    if (!isAuthenticated(request)) {
+      response.status(401).json({ error: 'Authentication required' });
+      return;
+    }
 
-  const apiKey = process.env.OPENAI_API_KEY;
+    const apiKey = process.env.OPENAI_API_KEY;
 
-  if (!apiKey) {
-    response.status(503).json({ error: 'OpenAI API key is not configured' });
-    return;
-  }
+    if (!apiKey) {
+      response.status(503).json({ error: 'OpenAI API key is not configured' });
+      return;
+    }
 
-  const metrics = readMetrics(request.body);
+    const metrics = readMetrics(request.body);
 
-  if (!metrics) {
-    response.status(400).json({ error: 'Invalid cloud metrics' });
-    return;
-  }
+    if (!metrics) {
+      response.status(400).json({ error: 'Invalid cloud metrics' });
+      return;
+    }
 
-  const openAiResponse = await fetch('https://api.openai.com/v1/responses', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: defaultModel,
-      input: [
-        {
-          role: 'system',
-          content:
-            'You name cute cloud creatures for a cozy drawing toy. Return playful, child-friendly, concise JSON only.',
-        },
-        {
-          role: 'user',
-          content: `Create one whimsical creature concept from these deterministic cloud metrics: ${JSON.stringify(metrics)}. Make the result feel matched to the shape.`,
-        },
-      ],
-      text: {
-        format: {
-          type: 'json_schema',
-          name: 'cloud_creature',
-          strict: true,
-          schema: creatureSchema,
-        },
+    const openAiResponse = await fetch('https://api.openai.com/v1/responses', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
       },
-    }),
-  });
+      body: JSON.stringify({
+        model: defaultModel,
+        input: [
+          {
+            role: 'system',
+            content:
+              'You name cute cloud creatures for a cozy drawing toy. Return playful, child-friendly, concise JSON only.',
+          },
+          {
+            role: 'user',
+            content: `Create one whimsical creature concept from these deterministic cloud metrics: ${JSON.stringify(metrics)}. Make the result feel matched to the shape.`,
+          },
+        ],
+        text: {
+          format: {
+            type: 'json_schema',
+            name: 'cloud_creature',
+            strict: true,
+            schema: creatureSchema,
+          },
+        },
+      }),
+    });
 
-  const responseBody = await openAiResponse.json();
+    const responseBody = await readJsonResponse(openAiResponse);
 
-  if (!openAiResponse.ok) {
-    response.status(openAiResponse.status).json({ error: 'OpenAI request failed' });
-    return;
+    if (!openAiResponse.ok) {
+      response.status(openAiResponse.status).json({ error: readOpenAiError(responseBody) });
+      return;
+    }
+
+    const outputText = extractOutputText(responseBody);
+
+    if (!outputText) {
+      response.status(502).json({ error: 'OpenAI response did not include text output' });
+      return;
+    }
+
+    try {
+      response.status(200).json(JSON.parse(outputText));
+    } catch {
+      response.status(502).json({ error: 'OpenAI returned invalid creature JSON' });
+    }
+  } catch {
+    response.status(500).json({ error: 'Creature generation route failed' });
   }
-
-  const outputText = extractOutputText(responseBody);
-
-  if (!outputText) {
-    response.status(502).json({ error: 'OpenAI response did not include text output' });
-    return;
-  }
-
-  response.status(200).json(JSON.parse(outputText));
 }
