@@ -26,7 +26,7 @@ function samplePoints(points: Point[]) {
     }));
 }
 
-function createCloudImageDataUrl(points: Point[]) {
+function createCloudImageAssets(points: Point[]) {
   const bounds = analyzeCloud(points).bounds;
   const size = 768;
   const padding = 84;
@@ -36,13 +36,20 @@ function createCloudImageDataUrl(points: Point[]) {
   const offsetX = (size - width * scale) / 2 - bounds.minX * scale;
   const offsetY = (size - height * scale) / 2 - bounds.minY * scale;
   const canvas = document.createElement('canvas');
+  const maskCanvas = document.createElement('canvas');
   const context = canvas.getContext('2d');
+  const maskContext = maskCanvas.getContext('2d');
 
   canvas.width = size;
   canvas.height = size;
+  maskCanvas.width = size;
+  maskCanvas.height = size;
 
-  if (!context) {
-    return '';
+  if (!context || !maskContext) {
+    return {
+      reference: '',
+      mask: '',
+    };
   }
 
   context.clearRect(0, 0, size, size);
@@ -67,12 +74,26 @@ function createCloudImageDataUrl(points: Point[]) {
     context.stroke();
   }
 
-  return canvas.toDataURL('image/png');
+  maskContext.fillStyle = '#000000';
+  maskContext.fillRect(0, 0, size, size);
+  maskContext.globalCompositeOperation = 'destination-out';
+
+  for (const point of points) {
+    maskContext.beginPath();
+    maskContext.arc(point.x * scale + offsetX, point.y * scale + offsetY, point.radius * scale * 1.18, 0, Math.PI * 2);
+    maskContext.fill();
+  }
+
+  return {
+    reference: canvas.toDataURL('image/png'),
+    mask: maskCanvas.toDataURL('image/png'),
+  };
 }
 
 export async function createCreatureWithAi(points: Point[]): Promise<CreatureGenerationResult> {
   const baseCreature = createCreatureFromPoints(points);
   const shape = analyzeCloud(points);
+  const cloudImageAssets = createCloudImageAssets(points);
 
   try {
     const response = await fetch('/api/generate-creature', {
@@ -91,7 +112,8 @@ export async function createCreatureWithAi(points: Point[]): Promise<CreatureGen
           seed: shape.seed,
         },
         pointSample: samplePoints(points),
-        cloudImageDataUrl: createCloudImageDataUrl(points),
+        cloudImageDataUrl: cloudImageAssets.reference,
+        cloudMaskDataUrl: cloudImageAssets.mask,
       }),
     });
 

@@ -83,12 +83,12 @@ function readPointSample(body: unknown): CloudPointSample[] {
     .slice(0, 28);
 }
 
-function readCloudImage(body: unknown) {
-  if (!body || typeof body !== 'object' || !('cloudImageDataUrl' in body)) {
+function readImageDataUrl(body: unknown, field: 'cloudImageDataUrl' | 'cloudMaskDataUrl') {
+  if (!body || typeof body !== 'object' || !(field in body)) {
     return null;
   }
 
-  const dataUrl = (body as { cloudImageDataUrl?: unknown }).cloudImageDataUrl;
+  const dataUrl = (body as Record<string, unknown>)[field];
 
   if (typeof dataUrl !== 'string') {
     return null;
@@ -161,8 +161,9 @@ function buildImagePrompt(metrics: CloudMetrics, pointSample: CloudPointSample[]
     'Edit the provided input image into a single adorable floating cloud creature.',
     'Style: kawaii pastel sticker illustration, chibi proportions, fluffy white cloud body, big cute expressive eyes, tiny mouth, soft blush, rounded simplified shapes, polished and magical.',
     'Do not make it photorealistic, cinematic, realistic, scary, detailed fantasy concept art, or 3D rendered. Keep it flat-to-soft illustrated and toy-like.',
-    'Use the input cloud drawing as the source silhouette. Preserve its overall outline, proportions, lumpy blob placement, and orientation.',
-    'Add eyes, mouth, and a few small creature details inside or just around that silhouette. Do not replace it with an unrelated creature.',
+    'Use the input cloud drawing and edit mask as strict shape constraints. Preserve the exact overall outline, proportions, lumpy blob placement, and orientation.',
+    'Only decorate and stylize the cloud within the masked cloud region. Do not replace it with an unrelated creature or invent a different silhouette.',
+    'Add eyes, mouth, and tiny kawaii details inside the cloud shape. Keep appendages very small and close to the original silhouette.',
     'Keep a transparent background. Do not add text, labels, signatures, UI, frames, or a landscape.',
     `Shape: ${aspect}, ${texture}, ${metrics.size}, width ${metrics.width}px, height ${metrics.height}px, area ${metrics.area}, roughness ${metrics.roughness}, ${metrics.pointCount} drawn blobs.`,
     `Add creature details that match the shape: ${metrics.width > metrics.height * 1.35 ? 'wings, tiny legs, or whale-like tail' : metrics.height > metrics.width * 1.2 ? 'antennae, little crown, or long floating posture' : 'small face, soft cheeks, sparkles, or raindrop charms'}.`,
@@ -203,7 +204,8 @@ export default async function handler(request: ApiRequest, response: ApiResponse
     }
 
     const metrics = readMetrics(request.body);
-    const cloudImage = readCloudImage(request.body);
+    const cloudImage = readImageDataUrl(request.body, 'cloudImageDataUrl');
+    const cloudMask = readImageDataUrl(request.body, 'cloudMaskDataUrl');
 
     if (!metrics) {
       response.status(400).json({ error: 'Invalid cloud metrics' });
@@ -212,6 +214,11 @@ export default async function handler(request: ApiRequest, response: ApiResponse
 
     if (!cloudImage) {
       response.status(400).json({ error: 'Cloud reference image is required' });
+      return;
+    }
+
+    if (!cloudMask) {
+      response.status(400).json({ error: 'Cloud edit mask is required' });
       return;
     }
 
@@ -225,6 +232,7 @@ export default async function handler(request: ApiRequest, response: ApiResponse
     formData.append('background', 'transparent');
     formData.append('output_format', defaultOutputFormat);
     formData.append('image', new Blob([cloudImage.buffer], { type: cloudImage.mediaType }), 'cloud-reference.png');
+    formData.append('mask', new Blob([cloudMask.buffer], { type: cloudMask.mediaType }), 'cloud-mask.png');
 
     const openAiResponse = await fetch('https://api.openai.com/v1/images/edits', {
       method: 'POST',
