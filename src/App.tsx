@@ -4,6 +4,7 @@ import { BrushControls } from './components/BrushControls';
 import { CloudCreature } from './components/CloudCreature';
 import { CreatureCard } from './components/CreatureCard';
 import { Gallery } from './components/Gallery';
+import { SkyParade } from './components/SkyParade';
 import { TopBar } from './components/TopBar';
 import { createCreatureWithAi, type CreatureGenerationResult } from './game/ai';
 import { createCreatureFromPoints } from './game/generator';
@@ -230,6 +231,7 @@ export default function App() {
         />
         <section className="workspace">
           <div className="sky-stage" ref={stageRef}>
+            <SkyParade creatures={savedCreatures} onSelect={loadSavedCreature} />
             <svg
               className="draw-surface"
               role="application"

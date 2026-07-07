@@ -261,6 +261,7 @@ button:disabled {
 .draw-surface {
   position: absolute;
   inset: 0;
+  z-index: 1;
   width: 100%;
   height: 100%;
   touch-action: none;
@@ -268,6 +269,7 @@ button:disabled {
 
 .sky-status {
   position: absolute;
+  z-index: 3;
   left: 18px;
   bottom: 16px;
   max-width: min(440px, calc(100% - 36px));
@@ -279,6 +281,43 @@ button:disabled {
   border: 1px solid rgba(255, 255, 255, 0.62);
   border-radius: 8px;
   backdrop-filter: blur(14px);
+}
+
+.sky-parade {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.parade-friend {
+  position: absolute;
+  left: 0;
+  display: grid;
+  width: 86px;
+  min-height: 76px;
+  place-items: center;
+  padding: 4px;
+  pointer-events: auto;
+  background: rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.42);
+  border-radius: 8px;
+  box-shadow: 0 14px 30px rgba(67, 115, 151, 0.14);
+  opacity: 0.78;
+  transform: translate3d(calc(100vw + 120px), 0, 0);
+  animation: paradeDrift linear infinite;
+  backdrop-filter: blur(5px);
+}
+
+.parade-friend:hover {
+  opacity: 1;
+  transform: translate3d(calc(100vw + 120px), -3px, 0);
+}
+
+.parade-friend .creature-thumb {
+  width: 72px;
+  height: 62px;
 }
 
 .draft-cloud circle,
@@ -642,6 +681,20 @@ input[type='range'] {
 
   50% {
     transform: translate3d(10px, -16px, 0) rotate(0.8deg);
+  }
+}
+
+@keyframes paradeDrift {
+  0% {
+    transform: translate3d(calc(100vw + 140px), 0, 0) rotate(-1deg);
+  }
+
+  50% {
+    transform: translate3d(45vw, -12px, 0) rotate(1deg);
+  }
+
+  100% {
+    transform: translate3d(-150px, 0, 0) rotate(-1deg);
   }
 }
 
