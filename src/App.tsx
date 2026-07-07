@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { AuthGate } from './components/AuthGate';
 import { BrushControls } from './components/BrushControls';
 import { CloudCreature } from './components/CloudCreature';
 import { CreatureCard } from './components/CreatureCard';
@@ -175,49 +176,57 @@ export default function App() {
     setSavedCreatures((currentCreatures) => currentCreatures.filter((savedCreature) => savedCreature.id !== id));
   }
 
+  async function signOut() {
+    await fetch('/api/auth', { method: 'DELETE' });
+    window.location.reload();
+  }
+
   return (
-    <main className="app-shell" aria-label="Cloud Sculptor app">
-      <div className="sky-decoration cloud-one" />
-      <div className="sky-decoration cloud-two" />
-      <TopBar
-        canBringToLife={canBringToLife}
-        isGenerating={isGenerating}
-        onBringToLife={bringToLife}
-        onClear={clearCanvas}
-      />
-      <section className="workspace">
-        <div className="sky-stage" ref={stageRef}>
-          <svg
-            className="draw-surface"
-            role="application"
-            aria-label="Draw clouds here"
-            onPointerDown={handlePointerDown}
-            onPointerMove={handlePointerMove}
-            onPointerUp={stopDrawing}
-            onPointerCancel={stopDrawing}
-          >
-            <defs>
-              <filter id="cloud-soft-shadow" x="-35%" y="-35%" width="170%" height="170%">
-                <feDropShadow dx="0" dy="16" stdDeviation="11" floodColor="#6d93b4" floodOpacity="0.24" />
-              </filter>
-            </defs>
-            <CloudCreature creature={creature} points={points} animated />
-          </svg>
-          <div className="sky-status">{statusText}</div>
-        </div>
-        <aside className="control-panel" aria-label="Cloud sculpting controls">
-          <BrushControls brushSize={brushSize} onBrushSizeChange={setBrushSize} />
-          <CreatureCard
-            creature={creature}
-            generationSource={generationSource}
-            name={creatureName}
-            onNameChange={setCreatureName}
-            onSave={saveCreature}
-            canSave={canSave}
-          />
-          <Gallery creatures={savedCreatures} onDelete={deleteCreature} />
-        </aside>
-      </section>
-    </main>
+    <AuthGate>
+      <main className="app-shell" aria-label="Cloud Sculptor app">
+        <div className="sky-decoration cloud-one" />
+        <div className="sky-decoration cloud-two" />
+        <TopBar
+          canBringToLife={canBringToLife}
+          isGenerating={isGenerating}
+          onBringToLife={bringToLife}
+          onClear={clearCanvas}
+          onSignOut={signOut}
+        />
+        <section className="workspace">
+          <div className="sky-stage" ref={stageRef}>
+            <svg
+              className="draw-surface"
+              role="application"
+              aria-label="Draw clouds here"
+              onPointerDown={handlePointerDown}
+              onPointerMove={handlePointerMove}
+              onPointerUp={stopDrawing}
+              onPointerCancel={stopDrawing}
+            >
+              <defs>
+                <filter id="cloud-soft-shadow" x="-35%" y="-35%" width="170%" height="170%">
+                  <feDropShadow dx="0" dy="16" stdDeviation="11" floodColor="#6d93b4" floodOpacity="0.24" />
+                </filter>
+              </defs>
+              <CloudCreature creature={creature} points={points} animated />
+            </svg>
+            <div className="sky-status">{statusText}</div>
+          </div>
+          <aside className="control-panel" aria-label="Cloud sculpting controls">
+            <BrushControls brushSize={brushSize} onBrushSizeChange={setBrushSize} />
+            <CreatureCard
+              creature={creature}
+              generationSource={generationSource}
+              name={creatureName}
+              onNameChange={setCreatureName}
+              onSave={saveCreature}
+              canSave={canSave}
+            />
+            <Gallery creatures={savedCreatures} onDelete={deleteCreature} />
+          </aside>
+        </section>
+      </main>
+    </AuthGate>
   );
 }

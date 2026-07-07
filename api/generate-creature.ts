@@ -1,13 +1,4 @@
-interface ApiRequest {
-  method?: string;
-  body?: unknown;
-}
-
-interface ApiResponse {
-  status: (statusCode: number) => ApiResponse;
-  json: (body: unknown) => void;
-  setHeader: (name: string, value: string) => void;
-}
+import { isAuthConfigured, isAuthenticated, setCorsHeaders, type ApiRequest, type ApiResponse } from './_auth';
 
 interface CloudMetrics {
   width: number;
@@ -19,7 +10,6 @@ interface CloudMetrics {
   seed: number;
 }
 
-const allowedOrigins = process.env.ALLOWED_ORIGIN ?? '*';
 const defaultModel = process.env.OPENAI_MODEL ?? 'gpt-5.5';
 
 const creatureSchema = {
@@ -139,9 +129,7 @@ function extractOutputText(responseBody: unknown) {
 }
 
 export default async function handler(request: ApiRequest, response: ApiResponse) {
-  response.setHeader('Access-Control-Allow-Origin', allowedOrigins);
-  response.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  response.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  setCorsHeaders(response);
 
   if (request.method === 'OPTIONS') {
     response.status(204).json({});
@@ -150,6 +138,16 @@ export default async function handler(request: ApiRequest, response: ApiResponse
 
   if (request.method !== 'POST') {
     response.status(405).json({ error: 'Method not allowed' });
+    return;
+  }
+
+  if (!isAuthConfigured()) {
+    response.status(503).json({ error: 'App passcode is not configured' });
+    return;
+  }
+
+  if (!isAuthenticated(request)) {
+    response.status(401).json({ error: 'Authentication required' });
     return;
   }
 

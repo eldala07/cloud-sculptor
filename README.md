@@ -28,9 +28,22 @@ Then set:
 ```bash
 OPENAI_API_KEY=your_api_key
 OPENAI_MODEL=gpt-5.5
+APP_PASSCODE=your_shared_passcode
 ```
 
 The plain Vite dev server will still run the app, but it will use the local procedural fallback unless your host/dev environment also serves the `/api/generate-creature` serverless route. On Vercel, add `OPENAI_API_KEY` in the project environment variables before deploying.
+
+## App access
+
+Cloud Sculptor includes a lightweight passcode gate for public deployments. The passcode is checked by the serverless `/api/auth` route, which sets a signed HttpOnly session cookie. The OpenAI generation endpoint refuses unauthenticated requests.
+
+Set this environment variable on your host:
+
+```bash
+APP_PASSCODE=your_shared_passcode
+```
+
+Optionally set `AUTH_SECRET` to a long random value for stable cookie signing across deployments.
 
 ## Build
 
