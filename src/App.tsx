@@ -51,6 +51,10 @@ export default function App() {
     }
 
     if (creature) {
+      if (generationSource === 'ai-image') {
+        return `${creature.name} is floating as a generated cloud-creature image.`;
+      }
+
       return generationSource === 'ai'
         ? `${creature.name} is gently floating with AI-sparked traits.`
         : generationNote || `${creature.name} is gently floating from local cloud magic.`;

@@ -14,6 +14,23 @@ function getViewBox(creature: Creature, compact: boolean) {
   return `${bounds.minX - padding} ${bounds.minY - padding} ${width + padding * 2} ${height + padding * 2}`;
 }
 
+function GeneratedImageCreature({ creature, compact }: { creature: Creature; compact: boolean }) {
+  const { bounds, width, height } = creature.shape;
+  const padding = compact ? 32 : 72;
+
+  return (
+    <image
+      className={compact ? undefined : 'generated-creature-image'}
+      href={creature.generatedImage?.dataUrl}
+      x={bounds.minX - padding}
+      y={bounds.minY - padding}
+      width={width + padding * 2}
+      height={height + padding * 2}
+      preserveAspectRatio="xMidYMid meet"
+    />
+  );
+}
+
 function EyePair({ creature }: { creature: Creature }) {
   const { bounds, width, height } = creature.shape;
   const { eyes, asymmetry, blush } = creature.features;
@@ -175,14 +192,20 @@ export function CloudCreature({ creature, points = [], animated = false, compact
 
   const cloud = (
     <g>
-      <Extras creature={creature} />
-      <g className="living-cloud">
-        {creature.shape.points.map((point, index) => (
-          <circle key={`${point.x}-${point.y}-${index}`} cx={point.x} cy={point.y} r={point.radius} />
-        ))}
-      </g>
-      <EyePair creature={creature} />
-      <Mouth creature={creature} />
+      {creature.generatedImage ? (
+        <GeneratedImageCreature creature={creature} compact={compact} />
+      ) : (
+        <>
+          <Extras creature={creature} />
+          <g className="living-cloud">
+            {creature.shape.points.map((point, index) => (
+              <circle key={`${point.x}-${point.y}-${index}`} cx={point.x} cy={point.y} r={point.radius} />
+            ))}
+          </g>
+          <EyePair creature={creature} />
+          <Mouth creature={creature} />
+        </>
+      )}
     </g>
   );
 

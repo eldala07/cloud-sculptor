@@ -302,6 +302,10 @@ button:disabled {
   transform-origin: center;
 }
 
+.generated-creature-image {
+  filter: drop-shadow(0 20px 20px rgba(69, 113, 145, 0.22));
+}
+
 .creature-face {
   fill: none;
   stroke: #26384a;
@@ -513,6 +517,13 @@ input[type='range'] {
 
 .trait-list {
   margin-bottom: 14px;
+}
+
+.image-note {
+  margin: -2px 0 14px;
+  color: #5a7080;
+  font-size: 0.86rem;
+  line-height: 1.45;
 }
 
 .gallery-empty {

@@ -10,49 +10,16 @@ interface CloudMetrics {
   seed: number;
 }
 
-const defaultModel = process.env.OPENAI_MODEL ?? 'gpt-5.5';
+interface CloudPointSample {
+  x: number;
+  y: number;
+  radius: number;
+}
 
-const creatureSchema = {
-  type: 'object',
-  additionalProperties: false,
-  required: ['name', 'mood', 'traits', 'eyes', 'mouth', 'accessory', 'extras', 'blush'],
-  properties: {
-    name: {
-      type: 'string',
-    },
-    mood: {
-      type: 'string',
-    },
-    traits: {
-      type: 'array',
-      items: {
-        type: 'string',
-      },
-    },
-    eyes: {
-      type: 'string',
-      enum: ['sleepy', 'happy', 'surprised', 'tiny', 'big'],
-    },
-    mouth: {
-      type: 'string',
-      enum: ['smile', 'o', 'sleepy', 'grin'],
-    },
-    accessory: {
-      type: 'string',
-      enum: ['antennae', 'bow', 'crown', 'halo', 'horns', 'none'],
-    },
-    extras: {
-      type: 'array',
-      items: {
-        type: 'string',
-        enum: ['wings', 'legs', 'many-legs', 'tail', 'raindrops', 'sparkles'],
-      },
-    },
-    blush: {
-      type: 'boolean',
-    },
-  },
-};
+const defaultImageModel = process.env.OPENAI_IMAGE_MODEL ?? 'gpt-image-1';
+const defaultImageQuality = process.env.OPENAI_IMAGE_QUALITY ?? 'low';
+const defaultImageSize = process.env.OPENAI_IMAGE_SIZE ?? '1024x1024';
+const defaultOutputFormat = process.env.OPENAI_IMAGE_FORMAT ?? 'png';
 
 function isMetric(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value);
@@ -88,44 +55,32 @@ function readMetrics(body: unknown): CloudMetrics | null {
   };
 }
 
-function extractOutputText(responseBody: unknown) {
-  if (!responseBody || typeof responseBody !== 'object') {
-    return '';
+function readPointSample(body: unknown): CloudPointSample[] {
+  if (!body || typeof body !== 'object' || !('pointSample' in body)) {
+    return [];
   }
 
-  if ('output_text' in responseBody && typeof responseBody.output_text === 'string') {
-    return responseBody.output_text;
+  const pointSample = (body as { pointSample?: unknown }).pointSample;
+
+  if (!Array.isArray(pointSample)) {
+    return [];
   }
 
-  const output = (responseBody as { output?: unknown }).output;
-
-  if (!Array.isArray(output)) {
-    return '';
-  }
-
-  for (const item of output) {
-    if (!item || typeof item !== 'object' || !('content' in item)) {
-      continue;
-    }
-
-    const content = (item as { content?: unknown }).content;
-
-    if (!Array.isArray(content)) {
-      continue;
-    }
-
-    for (const contentItem of content) {
-      if (contentItem && typeof contentItem === 'object' && 'text' in contentItem) {
-        const text = (contentItem as { text?: unknown }).text;
-
-        if (typeof text === 'string') {
-          return text;
-        }
+  return pointSample
+    .filter((point): point is CloudPointSample => {
+      if (!point || typeof point !== 'object') {
+        return false;
       }
-    }
-  }
 
-  return '';
+      const candidate = point as Record<string, unknown>;
+      return isMetric(candidate.x) && isMetric(candidate.y) && isMetric(candidate.radius);
+    })
+    .map((point) => ({
+      x: Number(point.x.toFixed(2)),
+      y: Number(point.y.toFixed(2)),
+      radius: Math.round(point.radius),
+    }))
+    .slice(0, 28);
 }
 
 async function readJsonResponse(response: Response) {
@@ -144,17 +99,51 @@ async function readJsonResponse(response: Response) {
 
 function readOpenAiError(responseBody: unknown) {
   if (!responseBody || typeof responseBody !== 'object' || !('error' in responseBody)) {
-    return 'OpenAI request failed';
+    return 'OpenAI image request failed';
   }
 
   const error = (responseBody as { error?: unknown }).error;
 
   if (error && typeof error === 'object' && 'message' in error) {
     const message = (error as { message?: unknown }).message;
-    return typeof message === 'string' ? message : 'OpenAI request failed';
+    return typeof message === 'string' ? message : 'OpenAI image request failed';
   }
 
-  return typeof error === 'string' ? error : 'OpenAI request failed';
+  return typeof error === 'string' ? error : 'OpenAI image request failed';
+}
+
+function extractGeneratedImage(responseBody: unknown) {
+  if (!responseBody || typeof responseBody !== 'object' || !('data' in responseBody)) {
+    return '';
+  }
+
+  const data = (responseBody as { data?: unknown }).data;
+
+  if (!Array.isArray(data)) {
+    return '';
+  }
+
+  const firstImage = data.find((item) => item && typeof item === 'object' && 'b64_json' in item) as
+    | { b64_json?: unknown }
+    | undefined;
+
+  return typeof firstImage?.b64_json === 'string' ? firstImage.b64_json : '';
+}
+
+function buildImagePrompt(metrics: CloudMetrics, pointSample: CloudPointSample[]) {
+  const aspect = metrics.width > metrics.height * 1.35 ? 'wide horizontal' : metrics.height > metrics.width * 1.2 ? 'tall vertical' : 'rounded';
+  const texture = metrics.roughness > 0.55 ? 'lumpy and asymmetrical' : 'smooth and soft';
+
+  return [
+    'Create a single adorable floating cloud creature based on a user-drawn cloud silhouette.',
+    'Style: cozy pastel children\'s-book illustration, fluffy white cloud body, cute expressive face, soft lighting, polished and magical.',
+    'The creature must still look like it was made from a cloud, with the silhouette roughly matching the described shape.',
+    'Use a transparent background. Do not add text, labels, signatures, UI, frames, or a landscape.',
+    `Shape: ${aspect}, ${texture}, ${metrics.size}, width ${metrics.width}px, height ${metrics.height}px, area ${metrics.area}, roughness ${metrics.roughness}, ${metrics.pointCount} drawn blobs.`,
+    `Add creature details that match the shape: ${metrics.width > metrics.height * 1.35 ? 'wings, tiny legs, or whale-like tail' : metrics.height > metrics.width * 1.2 ? 'antennae, little crown, or long floating posture' : 'small face, soft cheeks, sparkles, or raindrop charms'}.`,
+    `Point sample for silhouette guidance: ${JSON.stringify(pointSample)}.`,
+    `Deterministic seed hint: ${metrics.seed}.`,
+  ].join(' ');
 }
 
 export default async function handler(request: ApiRequest, response: ApiResponse) {
@@ -195,33 +184,21 @@ export default async function handler(request: ApiRequest, response: ApiResponse
       return;
     }
 
-    const openAiResponse = await fetch('https://api.openai.com/v1/responses', {
+    const prompt = buildImagePrompt(metrics, readPointSample(request.body));
+    const openAiResponse = await fetch('https://api.openai.com/v1/images/generations', {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: defaultModel,
-        input: [
-          {
-            role: 'system',
-            content:
-              'You name cute cloud creatures for a cozy drawing toy. Return playful, child-friendly, concise JSON only.',
-          },
-          {
-            role: 'user',
-            content: `Create one whimsical creature concept from these deterministic cloud metrics: ${JSON.stringify(metrics)}. Make the result feel matched to the shape.`,
-          },
-        ],
-        text: {
-          format: {
-            type: 'json_schema',
-            name: 'cloud_creature',
-            strict: true,
-            schema: creatureSchema,
-          },
-        },
+        model: defaultImageModel,
+        prompt,
+        n: 1,
+        size: defaultImageSize,
+        quality: defaultImageQuality,
+        background: 'transparent',
+        output_format: defaultOutputFormat,
       }),
     });
 
@@ -232,19 +209,19 @@ export default async function handler(request: ApiRequest, response: ApiResponse
       return;
     }
 
-    const outputText = extractOutputText(responseBody);
+    const imageBase64 = extractGeneratedImage(responseBody);
 
-    if (!outputText) {
-      response.status(502).json({ error: 'OpenAI response did not include text output' });
+    if (!imageBase64) {
+      response.status(502).json({ error: 'OpenAI did not return generated image data' });
       return;
     }
 
-    try {
-      response.status(200).json(JSON.parse(outputText));
-    } catch {
-      response.status(502).json({ error: 'OpenAI returned invalid creature JSON' });
-    }
+    response.status(200).json({
+      imageDataUrl: `data:image/${defaultOutputFormat};base64,${imageBase64}`,
+      imagePrompt: prompt,
+      imageModel: defaultImageModel,
+    });
   } catch {
-    response.status(500).json({ error: 'Creature generation route failed' });
+    response.status(500).json({ error: 'Creature image generation route failed' });
   }
 }

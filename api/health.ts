@@ -17,6 +17,6 @@ export default function handler(request: ApiRequest, response: ApiResponse) {
     ok: true,
     authConfigured: isAuthConfigured(),
     openAiConfigured: Boolean(process.env.OPENAI_API_KEY),
-    model: process.env.OPENAI_MODEL ?? 'gpt-5.5',
+    imageModel: process.env.OPENAI_IMAGE_MODEL ?? 'gpt-image-1',
   });
 }

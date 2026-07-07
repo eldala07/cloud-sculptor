@@ -33,7 +33,7 @@ Then set:
 
 ```bash
 OPENAI_API_KEY=your_api_key
-OPENAI_MODEL=gpt-5.5
+OPENAI_IMAGE_MODEL=gpt-image-1
 APP_PASSCODE=your_shared_passcode
 ```
 
@@ -41,7 +41,7 @@ The plain Vite dev server does not serve the `/api/*` routes. On Vercel, add `OP
 
 ## App access
 
-Cloud Sculptor includes a lightweight passcode gate for public deployments. The passcode is checked by the serverless `/api/auth` route, which sets a signed HttpOnly session cookie. The OpenAI generation endpoint refuses unauthenticated requests.
+Cloud Sculptor includes a lightweight passcode gate for public deployments. The passcode is checked by the serverless `/api/auth` route, which sets a signed HttpOnly session cookie. The OpenAI image generation endpoint refuses unauthenticated requests.
 
 Set this environment variable on your host:
 

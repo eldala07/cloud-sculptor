@@ -1,25 +1,5 @@
 import { analyzeCloud, createCreatureFromPoints } from './generator';
-import type {
-  Accessory,
-  BodyExtra,
-  Creature,
-  CreatureTrait,
-  EyeStyle,
-  MouthStyle,
-  Point,
-  GenerationSource,
-} from './types';
-
-interface AiCreatureSuggestion {
-  name: string;
-  mood: string;
-  traits: string[];
-  eyes: EyeStyle;
-  mouth: MouthStyle;
-  accessory: Accessory;
-  extras: BodyExtra[];
-  blush: boolean;
-}
+import type { Creature, GenerationSource, Point } from './types';
 
 export interface CreatureGenerationResult {
   creature: Creature;
@@ -27,62 +7,23 @@ export interface CreatureGenerationResult {
   note?: string;
 }
 
-const eyeStyles: EyeStyle[] = ['sleepy', 'happy', 'surprised', 'tiny', 'big'];
-const mouthStyles: MouthStyle[] = ['smile', 'o', 'sleepy', 'grin'];
-const accessories: Accessory[] = ['antennae', 'bow', 'crown', 'halo', 'horns', 'none'];
-const bodyExtras: BodyExtra[] = ['wings', 'legs', 'many-legs', 'tail', 'raindrops', 'sparkles'];
-
-function isInList<T extends string>(value: unknown, list: T[]): value is T {
-  return typeof value === 'string' && list.includes(value as T);
+interface AiImageResponse {
+  imageDataUrl?: unknown;
+  imagePrompt?: unknown;
+  imageModel?: unknown;
 }
 
-function normalizeSuggestion(value: unknown): AiCreatureSuggestion | null {
-  if (!value || typeof value !== 'object') {
-    return null;
-  }
+function samplePoints(points: Point[]) {
+  const step = Math.max(1, Math.floor(points.length / 28));
 
-  const suggestion = value as Record<string, unknown>;
-  const extras = Array.isArray(suggestion.extras)
-    ? suggestion.extras.filter((extra) => isInList(extra, bodyExtras)).slice(0, 3)
-    : [];
-
-  if (
-    typeof suggestion.name !== 'string' ||
-    typeof suggestion.mood !== 'string' ||
-    !Array.isArray(suggestion.traits) ||
-    !isInList(suggestion.eyes, eyeStyles) ||
-    !isInList(suggestion.mouth, mouthStyles) ||
-    !isInList(suggestion.accessory, accessories) ||
-    typeof suggestion.blush !== 'boolean' ||
-    extras.length === 0
-  ) {
-    return null;
-  }
-
-  return {
-    name: suggestion.name.trim().slice(0, 32),
-    mood: suggestion.mood.trim().slice(0, 24),
-    traits: suggestion.traits
-      .filter((trait): trait is string => typeof trait === 'string')
-      .map((trait) => trait.trim().slice(0, 34))
-      .filter(Boolean)
-      .slice(0, 5),
-    eyes: suggestion.eyes,
-    mouth: suggestion.mouth,
-    accessory: suggestion.accessory,
-    extras,
-    blush: suggestion.blush,
-  };
-}
-
-function toTraits(suggestion: AiCreatureSuggestion, fallbackTraits: CreatureTrait[]): CreatureTrait[] {
-  const aiTraits = suggestion.traits.map((label): CreatureTrait => ({ type: 'personality', label }));
-  const faceTrait: CreatureTrait = { type: 'face', label: `${suggestion.eyes} eyes` };
-  const accessoryTrait: CreatureTrait | null =
-    suggestion.accessory === 'none' ? null : { type: 'accessory', label: suggestion.accessory };
-
-  return [...aiTraits, faceTrait, accessoryTrait].filter((trait): trait is CreatureTrait => Boolean(trait)).slice(0, 6)
-    || fallbackTraits;
+  return points
+    .filter((_, index) => index % step === 0)
+    .slice(0, 28)
+    .map((point) => ({
+      x: Number(point.x.toFixed(2)),
+      y: Number(point.y.toFixed(2)),
+      radius: Math.round(point.radius),
+    }));
 }
 
 export async function createCreatureWithAi(points: Point[]): Promise<CreatureGenerationResult> {
@@ -105,6 +46,7 @@ export async function createCreatureWithAi(points: Point[]): Promise<CreatureGen
           size: baseCreature.size,
           seed: shape.seed,
         },
+        pointSample: samplePoints(points),
       }),
     });
 
@@ -117,30 +59,24 @@ export async function createCreatureWithAi(points: Point[]): Promise<CreatureGen
       };
     }
 
-    const suggestion = normalizeSuggestion(await response.json());
+    const imageResponse = (await response.json()) as AiImageResponse;
 
-    if (!suggestion) {
+    if (typeof imageResponse.imageDataUrl !== 'string') {
       return {
         creature: baseCreature,
         source: 'procedural',
-        note: 'AI returned an unexpected shape, so local generation was used.',
+        note: 'AI did not return an image, so local generation was used.',
       };
     }
 
     return {
-      source: 'ai',
+      source: 'ai-image',
       creature: {
         ...baseCreature,
-        name: suggestion.name || baseCreature.name,
-        mood: suggestion.mood || baseCreature.mood,
-        traits: toTraits(suggestion, baseCreature.traits),
-        features: {
-          ...baseCreature.features,
-          eyes: suggestion.eyes,
-          mouth: suggestion.mouth,
-          accessory: suggestion.accessory,
-          extras: suggestion.extras,
-          blush: suggestion.blush,
+        generatedImage: {
+          dataUrl: imageResponse.imageDataUrl,
+          prompt: typeof imageResponse.imagePrompt === 'string' ? imageResponse.imagePrompt : '',
+          model: typeof imageResponse.imageModel === 'string' ? imageResponse.imageModel : 'gpt-image-1',
         },
       },
     };

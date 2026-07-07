@@ -30,8 +30,9 @@ export function CreatureCard({ creature, generationSource, name, onNameChange, o
       <div className="creature-facts">
         <span>{creature.mood}</span>
         <span>{creature.size}</span>
-        <span>{generationSource === 'ai' ? 'AI sparked' : 'Local magic'}</span>
+        <span>{generationSource === 'ai-image' ? 'AI image' : generationSource === 'ai' ? 'AI sparked' : 'Local magic'}</span>
       </div>
+      {creature.generatedImage ? <p className="image-note">Generated picture from the cloud shape.</p> : null}
       <div className="trait-list" aria-label="Creature traits">
         {creature.traits.map((trait) => (
           <span key={`${trait.type}-${trait.label}`}>{trait.label}</span>
