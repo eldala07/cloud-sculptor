@@ -159,7 +159,8 @@ function buildImagePrompt(metrics: CloudMetrics, pointSample: CloudPointSample[]
 
   return [
     'Edit the provided input image into a single adorable floating cloud creature.',
-    'Style: cozy pastel children\'s-book illustration, fluffy white cloud body, cute expressive face, soft lighting, polished and magical.',
+    'Style: kawaii pastel sticker illustration, chibi proportions, fluffy white cloud body, big cute expressive eyes, tiny mouth, soft blush, rounded simplified shapes, polished and magical.',
+    'Do not make it photorealistic, cinematic, realistic, scary, detailed fantasy concept art, or 3D rendered. Keep it flat-to-soft illustrated and toy-like.',
     'Use the input cloud drawing as the source silhouette. Preserve its overall outline, proportions, lumpy blob placement, and orientation.',
     'Add eyes, mouth, and a few small creature details inside or just around that silhouette. Do not replace it with an unrelated creature.',
     'Keep a transparent background. Do not add text, labels, signatures, UI, frames, or a landscape.',

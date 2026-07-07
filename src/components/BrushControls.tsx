@@ -1,11 +1,20 @@
 interface BrushControlsProps {
   brushSize: number;
   aiEnabled: boolean;
+  paradeEnabled: boolean;
   onBrushSizeChange: (value: number) => void;
   onAiEnabledChange: (value: boolean) => void;
+  onParadeEnabledChange: (value: boolean) => void;
 }
 
-export function BrushControls({ brushSize, aiEnabled, onBrushSizeChange, onAiEnabledChange }: BrushControlsProps) {
+export function BrushControls({
+  brushSize,
+  aiEnabled,
+  paradeEnabled,
+  onBrushSizeChange,
+  onAiEnabledChange,
+  onParadeEnabledChange,
+}: BrushControlsProps) {
   return (
     <section className="panel-section brush-panel">
       <div className="section-heading">
@@ -33,6 +42,18 @@ export function BrushControls({ brushSize, aiEnabled, onBrushSizeChange, onAiEna
           checked={aiEnabled}
           onChange={(event) => onAiEnabledChange(event.target.checked)}
           aria-label="Enable AI image generation"
+        />
+      </label>
+      <label className="toggle-row">
+        <span>
+          <strong>Cloud parade</strong>
+          <small>{paradeEnabled ? 'Saved friends drift across the sky' : 'Keep saved friends in the gallery'}</small>
+        </span>
+        <input
+          type="checkbox"
+          checked={paradeEnabled}
+          onChange={(event) => onParadeEnabledChange(event.target.checked)}
+          aria-label="Enable saved cloud parade"
         />
       </label>
       <ol className="steps">

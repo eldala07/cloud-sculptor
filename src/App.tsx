@@ -13,6 +13,7 @@ import './styles/app.css';
 
 const savedKey = 'cloud-sculptor.saved-creatures';
 const aiEnabledKey = 'cloud-sculptor.ai-enabled';
+const paradeEnabledKey = 'cloud-sculptor.parade-enabled';
 const minimumCloudPoints = 5;
 
 function loadSavedCreatures(): SavedCreature[] {
@@ -54,6 +55,7 @@ export default function App() {
   const [brushSize, setBrushSize] = useState(34);
   const [isDrawing, setIsDrawing] = useState(false);
   const [aiEnabled, setAiEnabled] = useState(() => window.localStorage.getItem(aiEnabledKey) !== 'false');
+  const [paradeEnabled, setParadeEnabled] = useState(() => window.localStorage.getItem(paradeEnabledKey) !== 'false');
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationSource, setGenerationSource] = useState<CreatureGenerationResult['source'] | null>(null);
   const [generationNote, setGenerationNote] = useState('');
@@ -74,6 +76,10 @@ export default function App() {
   useEffect(() => {
     window.localStorage.setItem(aiEnabledKey, String(aiEnabled));
   }, [aiEnabled]);
+
+  useEffect(() => {
+    window.localStorage.setItem(paradeEnabledKey, String(paradeEnabled));
+  }, [paradeEnabled]);
 
   const canBringToLife = points.length >= minimumCloudPoints;
   const canSave = Boolean(creature && creatureName.trim());
@@ -259,7 +265,7 @@ export default function App() {
         />
         <section className="workspace">
           <div className="sky-stage" ref={stageRef}>
-            <SkyParade creatures={savedCreatures} onSelect={loadSavedCreature} />
+            {paradeEnabled ? <SkyParade creatures={savedCreatures} onSelect={loadSavedCreature} /> : null}
             <svg
               className="draw-surface"
               role="application"
@@ -282,8 +288,10 @@ export default function App() {
             <BrushControls
               brushSize={brushSize}
               aiEnabled={aiEnabled}
+              paradeEnabled={paradeEnabled}
               onBrushSizeChange={setBrushSize}
               onAiEnabledChange={setAiEnabled}
+              onParadeEnabledChange={setParadeEnabled}
             />
             <CreatureCard
               creature={creature}
