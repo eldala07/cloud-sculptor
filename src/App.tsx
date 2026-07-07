@@ -24,10 +24,28 @@ function loadSavedCreatures(): SavedCreature[] {
 
   try {
     const parsedValue = JSON.parse(rawValue) as SavedCreature[];
-    return Array.isArray(parsedValue) ? parsedValue : [];
+    return Array.isArray(parsedValue)
+      ? parsedValue.map((savedCreature) =>
+          savedCreature.generationSource === 'ai-image' && !savedCreature.generatedImage?.dataUrl
+            ? { ...savedCreature, generationSource: 'procedural' }
+            : savedCreature,
+        )
+      : [];
   } catch {
     return [];
   }
+}
+
+function removeGeneratedImagesForStorage(creatures: SavedCreature[]): SavedCreature[] {
+  return creatures.map((creature) => {
+    if (!creature.generatedImage) {
+      return creature;
+    }
+
+    const storedCreature = { ...creature };
+    delete storedCreature.generatedImage;
+    return storedCreature;
+  });
 }
 
 export default function App() {
@@ -41,10 +59,16 @@ export default function App() {
   const [generationNote, setGenerationNote] = useState('');
   const [creature, setCreature] = useState<Creature | null>(null);
   const [creatureName, setCreatureName] = useState('');
+  const [storageNote, setStorageNote] = useState('');
   const [savedCreatures, setSavedCreatures] = useState<SavedCreature[]>(() => loadSavedCreatures());
 
   useEffect(() => {
-    window.localStorage.setItem(savedKey, JSON.stringify(savedCreatures));
+    try {
+      window.localStorage.setItem(savedKey, JSON.stringify(removeGeneratedImagesForStorage(savedCreatures)));
+      setStorageNote('');
+    } catch {
+      setStorageNote('Saved locally for this session only; generated images are too large for browser storage.');
+    }
   }, [savedCreatures]);
 
   useEffect(() => {
@@ -59,6 +83,10 @@ export default function App() {
     }
 
     if (creature) {
+      if (storageNote) {
+        return storageNote;
+      }
+
       if (generationSource === 'ai-image') {
         return `${creature.name} is floating as a generated cloud-creature image.`;
       }
@@ -73,7 +101,7 @@ export default function App() {
     }
 
     return 'Draw a fluffy cloud anywhere in the sky.';
-  }, [aiEnabled, creature, generationNote, generationSource, isGenerating, points.length]);
+  }, [aiEnabled, creature, generationNote, generationSource, isGenerating, points.length, storageNote]);
 
   function getPoint(clientX: number, clientY: number): Point | null {
     const stage = stageRef.current;
