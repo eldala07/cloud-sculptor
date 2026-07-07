@@ -83,6 +83,29 @@ function readPointSample(body: unknown): CloudPointSample[] {
     .slice(0, 28);
 }
 
+function readCloudImage(body: unknown) {
+  if (!body || typeof body !== 'object' || !('cloudImageDataUrl' in body)) {
+    return null;
+  }
+
+  const dataUrl = (body as { cloudImageDataUrl?: unknown }).cloudImageDataUrl;
+
+  if (typeof dataUrl !== 'string') {
+    return null;
+  }
+
+  const match = dataUrl.match(/^data:(image\/(?:png|jpeg|webp));base64,([a-zA-Z0-9+/=]+)$/);
+
+  if (!match) {
+    return null;
+  }
+
+  return {
+    mediaType: match[1],
+    buffer: Buffer.from(match[2], 'base64'),
+  };
+}
+
 async function readJsonResponse(response: Response) {
   const bodyText = await response.text();
 
@@ -135,10 +158,11 @@ function buildImagePrompt(metrics: CloudMetrics, pointSample: CloudPointSample[]
   const texture = metrics.roughness > 0.55 ? 'lumpy and asymmetrical' : 'smooth and soft';
 
   return [
-    'Create a single adorable floating cloud creature based on a user-drawn cloud silhouette.',
+    'Edit the provided input image into a single adorable floating cloud creature.',
     'Style: cozy pastel children\'s-book illustration, fluffy white cloud body, cute expressive face, soft lighting, polished and magical.',
-    'The creature must still look like it was made from a cloud, with the silhouette roughly matching the described shape.',
-    'Use a transparent background. Do not add text, labels, signatures, UI, frames, or a landscape.',
+    'Use the input cloud drawing as the source silhouette. Preserve its overall outline, proportions, lumpy blob placement, and orientation.',
+    'Add eyes, mouth, and a few small creature details inside or just around that silhouette. Do not replace it with an unrelated creature.',
+    'Keep a transparent background. Do not add text, labels, signatures, UI, frames, or a landscape.',
     `Shape: ${aspect}, ${texture}, ${metrics.size}, width ${metrics.width}px, height ${metrics.height}px, area ${metrics.area}, roughness ${metrics.roughness}, ${metrics.pointCount} drawn blobs.`,
     `Add creature details that match the shape: ${metrics.width > metrics.height * 1.35 ? 'wings, tiny legs, or whale-like tail' : metrics.height > metrics.width * 1.2 ? 'antennae, little crown, or long floating posture' : 'small face, soft cheeks, sparkles, or raindrop charms'}.`,
     `Point sample for silhouette guidance: ${JSON.stringify(pointSample)}.`,
@@ -178,28 +202,35 @@ export default async function handler(request: ApiRequest, response: ApiResponse
     }
 
     const metrics = readMetrics(request.body);
+    const cloudImage = readCloudImage(request.body);
 
     if (!metrics) {
       response.status(400).json({ error: 'Invalid cloud metrics' });
       return;
     }
 
+    if (!cloudImage) {
+      response.status(400).json({ error: 'Cloud reference image is required' });
+      return;
+    }
+
     const prompt = buildImagePrompt(metrics, readPointSample(request.body));
-    const openAiResponse = await fetch('https://api.openai.com/v1/images/generations', {
+    const formData = new FormData();
+    formData.append('model', defaultImageModel);
+    formData.append('prompt', prompt);
+    formData.append('n', '1');
+    formData.append('size', defaultImageSize);
+    formData.append('quality', defaultImageQuality);
+    formData.append('background', 'transparent');
+    formData.append('output_format', defaultOutputFormat);
+    formData.append('image', new Blob([cloudImage.buffer], { type: cloudImage.mediaType }), 'cloud-reference.png');
+
+    const openAiResponse = await fetch('https://api.openai.com/v1/images/edits', {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        model: defaultImageModel,
-        prompt,
-        n: 1,
-        size: defaultImageSize,
-        quality: defaultImageQuality,
-        background: 'transparent',
-        output_format: defaultOutputFormat,
-      }),
+      body: formData,
     });
 
     const responseBody = await readJsonResponse(openAiResponse);

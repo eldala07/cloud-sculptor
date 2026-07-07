@@ -6,10 +6,12 @@ import { CreatureCard } from './components/CreatureCard';
 import { Gallery } from './components/Gallery';
 import { TopBar } from './components/TopBar';
 import { createCreatureWithAi, type CreatureGenerationResult } from './game/ai';
+import { createCreatureFromPoints } from './game/generator';
 import type { Creature, Point, SavedCreature } from './game/types';
 import './styles/app.css';
 
 const savedKey = 'cloud-sculptor.saved-creatures';
+const aiEnabledKey = 'cloud-sculptor.ai-enabled';
 const minimumCloudPoints = 5;
 
 function loadSavedCreatures(): SavedCreature[] {
@@ -32,6 +34,7 @@ export default function App() {
   const [points, setPoints] = useState<Point[]>([]);
   const [brushSize, setBrushSize] = useState(34);
   const [isDrawing, setIsDrawing] = useState(false);
+  const [aiEnabled, setAiEnabled] = useState(() => window.localStorage.getItem(aiEnabledKey) !== 'false');
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationSource, setGenerationSource] = useState<CreatureGenerationResult['source'] | null>(null);
   const [generationNote, setGenerationNote] = useState('');
@@ -43,11 +46,15 @@ export default function App() {
     window.localStorage.setItem(savedKey, JSON.stringify(savedCreatures));
   }, [savedCreatures]);
 
+  useEffect(() => {
+    window.localStorage.setItem(aiEnabledKey, String(aiEnabled));
+  }, [aiEnabled]);
+
   const canBringToLife = points.length >= minimumCloudPoints;
   const canSave = Boolean(creature && creatureName.trim());
   const statusText = useMemo(() => {
     if (isGenerating) {
-      return 'Asking the sky for a little extra magic...';
+      return aiEnabled ? 'Asking the sky for a generated cloud-creature picture...' : 'Shaping local cloud magic...';
     }
 
     if (creature) {
@@ -65,7 +72,7 @@ export default function App() {
     }
 
     return 'Draw a fluffy cloud anywhere in the sky.';
-  }, [creature, generationNote, generationSource, isGenerating, points.length]);
+  }, [aiEnabled, creature, generationNote, generationSource, isGenerating, points.length]);
 
   function getPoint(clientX: number, clientY: number): Point | null {
     const stage = stageRef.current;
@@ -142,6 +149,15 @@ export default function App() {
 
   async function bringToLife() {
     if (!canBringToLife || isGenerating) {
+      return;
+    }
+
+    if (!aiEnabled) {
+      const localCreature = createCreatureFromPoints(points);
+      setCreature(localCreature);
+      setCreatureName(localCreature.name);
+      setGenerationSource('procedural');
+      setGenerationNote('AI images are off, so this friend was created locally.');
       return;
     }
 
@@ -233,7 +249,12 @@ export default function App() {
             <div className="sky-status">{statusText}</div>
           </div>
           <aside className="control-panel" aria-label="Cloud sculpting controls">
-            <BrushControls brushSize={brushSize} onBrushSizeChange={setBrushSize} />
+            <BrushControls
+              brushSize={brushSize}
+              aiEnabled={aiEnabled}
+              onBrushSizeChange={setBrushSize}
+              onAiEnabledChange={setAiEnabled}
+            />
             <CreatureCard
               creature={creature}
               generationSource={generationSource}

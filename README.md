@@ -41,7 +41,7 @@ The plain Vite dev server does not serve the `/api/*` routes. On Vercel, add `OP
 
 ## App access
 
-Cloud Sculptor includes a lightweight passcode gate for public deployments. The passcode is checked by the serverless `/api/auth` route, which sets a signed HttpOnly session cookie. The OpenAI image generation endpoint refuses unauthenticated requests.
+Cloud Sculptor includes a lightweight passcode gate for public deployments. The passcode is checked by the serverless `/api/auth` route, which sets a signed HttpOnly session cookie. The OpenAI image endpoint refuses unauthenticated requests and edits a small PNG reference of the drawn cloud, so generated creatures stay anchored to the user's actual silhouette.
 
 Set this environment variable on your host:
 

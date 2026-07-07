@@ -26,6 +26,50 @@ function samplePoints(points: Point[]) {
     }));
 }
 
+function createCloudImageDataUrl(points: Point[]) {
+  const bounds = analyzeCloud(points).bounds;
+  const size = 768;
+  const padding = 84;
+  const width = Math.max(1, bounds.maxX - bounds.minX);
+  const height = Math.max(1, bounds.maxY - bounds.minY);
+  const scale = Math.min((size - padding * 2) / width, (size - padding * 2) / height);
+  const offsetX = (size - width * scale) / 2 - bounds.minX * scale;
+  const offsetY = (size - height * scale) / 2 - bounds.minY * scale;
+  const canvas = document.createElement('canvas');
+  const context = canvas.getContext('2d');
+
+  canvas.width = size;
+  canvas.height = size;
+
+  if (!context) {
+    return '';
+  }
+
+  context.clearRect(0, 0, size, size);
+  context.save();
+  context.shadowColor = 'rgba(72, 125, 160, 0.26)';
+  context.shadowBlur = 18;
+  context.fillStyle = 'rgba(255, 255, 255, 0.98)';
+
+  for (const point of points) {
+    context.beginPath();
+    context.arc(point.x * scale + offsetX, point.y * scale + offsetY, point.radius * scale, 0, Math.PI * 2);
+    context.fill();
+  }
+
+  context.restore();
+  context.lineWidth = Math.max(4, scale * 4);
+  context.strokeStyle = 'rgba(126, 184, 217, 0.72)';
+
+  for (const point of points) {
+    context.beginPath();
+    context.arc(point.x * scale + offsetX, point.y * scale + offsetY, point.radius * scale, 0, Math.PI * 2);
+    context.stroke();
+  }
+
+  return canvas.toDataURL('image/png');
+}
+
 export async function createCreatureWithAi(points: Point[]): Promise<CreatureGenerationResult> {
   const baseCreature = createCreatureFromPoints(points);
   const shape = analyzeCloud(points);
@@ -47,6 +91,7 @@ export async function createCreatureWithAi(points: Point[]): Promise<CreatureGen
           seed: shape.seed,
         },
         pointSample: samplePoints(points),
+        cloudImageDataUrl: createCloudImageDataUrl(points),
       }),
     });
 
